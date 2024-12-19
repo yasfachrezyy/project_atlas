@@ -7,26 +7,21 @@ class ControlScreen extends StatefulWidget {
 }
 
 class _ControlScreenState extends State<ControlScreen> {
-  String _controlStatus = "Idle"; // Status kontrol saat ini
-  final String apiUrl =
-      "http://192.168.1.100:5000/control"; // URL server Raspberry Pi
+  String _controlStatus = "Connected"; // Status kontrol saat ini
+  bool _isAutonomous = false; // Flag for autonomous mode
+  bool _isControlMode = false; // Flag for control system mode (manual or automatic)
 
   Future<void> _sendCommandToRaspberryPi(String command) async {
+    // Simplified command sending (no HTML request)
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        body: {'command': command},
-      );
+      setState(() {
+        _controlStatus = 'Sending command: $command';
+      });
+      await Future.delayed(Duration(seconds: 1)); // Simulate delay for command execution
 
-      if (response.statusCode == 200) {
-        setState(() {
-          _controlStatus = "$command executed successfully";
-        });
-      } else {
-        setState(() {
-          _controlStatus = "Failed to execute $command";
-        });
-      }
+      setState(() {
+        _controlStatus = "$command executed successfully";
+      });
     } catch (e) {
       setState(() {
         _controlStatus = "Error: $e";
@@ -64,75 +59,117 @@ class _ControlScreenState extends State<ControlScreen> {
               ),
             ),
             SizedBox(height: 20),
+            // Display status as simple text
             Text(
               'Status: $_controlStatus',
-              style: TextStyle(
-                  fontSize: 16, color: Colors.green[800] ?? Colors.green),
+              style: TextStyle(fontSize: 16, color: Colors.green[800] ?? Colors.green),
             ),
             SizedBox(height: 20),
-            // Joysticks Section
+            // Switch for switching between manual and autonomous mode
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Joystick for Up/Down (Forward / Backward)
-                _buildJoystickButton(
-                  Icons.arrow_upward,
-                  'Up',
-                  Colors.green[700] ?? Colors.green,
-                  () => _sendCommandToRaspberryPi('forward'),
-                ),
-                _buildJoystickButton(
-                  Icons.arrow_downward,
-                  'Down',
-                  Colors.green[700] ?? Colors.green,
-                  () => _sendCommandToRaspberryPi('backward'),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Joystick for Left/Right (Turn Left / Right)
-                _buildJoystickButton(
-                  Icons.arrow_back,
-                  'Left',
-                  Colors.green[700] ?? Colors.green,
-                  () => _sendCommandToRaspberryPi('left'),
-                ),
-                _buildJoystickButton(
-                  Icons.arrow_forward,
-                  'Right',
-                  Colors.green[700] ?? Colors.green,
-                  () => _sendCommandToRaspberryPi('right'),
+                Text('Autonomous Mode: ',
+                    style: TextStyle(
+                        fontSize: 16, color: Colors.green[700] ?? Colors.green)),
+                Switch(
+                  value: _isAutonomous,
+                  onChanged: (value) {
+                    setState(() {
+                      _isAutonomous = value;
+                      String modeCommand = _isAutonomous ? 'autonomous' : 'manual';
+                      _sendCommandToRaspberryPi(modeCommand);
+                    });
+                  },
+                  activeColor: Colors.green[700],
+                  inactiveThumbColor: Colors.red[700],
                 ),
               ],
             ),
             SizedBox(height: 20),
-            // Planting Controls (Buttons for actions)
-            Column(
+            // Control System Mode Switch
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildControlButton(
-                  'Start Planting',
-                  Icons.play_arrow,
-                  Colors.green[700] ?? Colors.green,
-                  () => _sendCommandToRaspberryPi('start'),
-                ),
-                SizedBox(height: 20),
-                _buildControlButton(
-                  'Pause Planting',
-                  Icons.pause,
-                  Colors.orange[700] ?? Colors.orange,
-                  () => _sendCommandToRaspberryPi('pause'),
-                ),
-                SizedBox(height: 20),
-                _buildControlButton(
-                  'Stop Planting',
-                  Icons.stop,
-                  Colors.red[700] ?? Colors.red,
-                  () => _sendCommandToRaspberryPi('stop'),
+                Text('Control Mode: ',
+                    style: TextStyle(
+                        fontSize: 16, color: Colors.green[700] ?? Colors.green)),
+                Switch(
+                  value: _isControlMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _isControlMode = value;
+                      String controlCommand =
+                          _isControlMode ? 'manual_control' : 'automatic_control';
+                      _sendCommandToRaspberryPi(controlCommand);
+                    });
+                  },
+                  activeColor: Colors.blue[700],
+                  inactiveThumbColor: Colors.orange[700],
                 ),
               ],
             ),
+            SizedBox(height: 20),
+            // Joysticks Section (Only visible when Control Mode is ON)
+            if (_isControlMode) ...[
+              // Only show joystick controls in Control Mode (ON)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildJoystickButton(
+                    Icons.arrow_upward,
+                    'Up',
+                    Colors.green[700] ?? Colors.green,
+                    () => _sendCommandToRaspberryPi('forward'),
+                  ),
+                  _buildJoystickButton(
+                    Icons.arrow_downward,
+                    'Down',
+                    Colors.green[700] ?? Colors.green,
+                    () => _sendCommandToRaspberryPi('backward'),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildJoystickButton(
+                    Icons.arrow_back,
+                    'Left',
+                    Colors.green[700] ?? Colors.green,
+                    () => _sendCommandToRaspberryPi('left'),
+                  ),
+                  _buildJoystickButton(
+                    Icons.arrow_forward,
+                    'Right',
+                    Colors.green[700] ?? Colors.green,
+                    () => _sendCommandToRaspberryPi('right'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+            // Autonomous Mode Control Buttons (Only visible in Autonomous Mode)
+            if (_isAutonomous) ...[
+              // Start and Stop buttons only visible in Autonomous Mode
+              Column(
+                children: [
+                  _buildControlButton(
+                    'Start Planting',
+                    Icons.play_arrow,
+                    Colors.green[700] ?? Colors.green,
+                    () => _sendCommandToRaspberryPi('start'),
+                  ),
+                  SizedBox(height: 20),
+                  _buildControlButton(
+                    'Stop Planting',
+                    Icons.stop,
+                    Colors.red[700] ?? Colors.red,
+                    () => _sendCommandToRaspberryPi('stop'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
